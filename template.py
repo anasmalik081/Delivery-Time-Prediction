@@ -3,7 +3,7 @@ Script to generate folders by automation
 """
 
 # Importing libraries
-import os, sys
+import os
 from pathlib import Path
 import logging
 
@@ -33,7 +33,8 @@ list_of_files = [
     "main.py",
     "logs.py",
     "exception.py",
-    "setup.py"
+    "setup.py",
+    "requirements.txt"
 ]
 
 

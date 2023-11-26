@@ -3,6 +3,7 @@ from flask import Flask
 from delivery_time_prediction.logger import logging
 from delivery_time_prediction.exception import CustomException
 from delivery_time_prediction.components.data_ingestion import DataIngestion
+from delivery_time_prediction.components.data_transformation import DataTransformation
 
 app = Flask(__name__)
 
@@ -18,8 +19,11 @@ def index():
 @app.route('/initiate', methods=['GET'])
 def initiate():
     data_ingestion = DataIngestion()
-    data_ingestion.initiate_data_ingestion()
-    return "Successfully Data Ingestion Done"
+    train_data, test_data = data_ingestion.initiate_data_ingestion()
+
+    data_transformation = DataTransformation()
+    train_arr, test_arr, _ = data_transformation.inititate_data_transformation(train_data, test_data)
+    return "Successfully Data Transformation Done"
 
 if __name__ == '__main__':
     app.run(debug=True)

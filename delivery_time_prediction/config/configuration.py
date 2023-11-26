@@ -42,3 +42,11 @@ FEATURE_ENGINEERING_OBJ_FILE_PATH = os.path.join(
     DATA_PREPROCESSED_DIR,
     'feature_engg.pkl'
 )
+
+# Model Training
+MODEL_FILE_PATH = os.path.join(
+    ROOT_DIR,
+    ARTIFACT_DIR_KEY,
+    MODEL_TRAINER_KEY,
+    MODEL_OBJ
+)

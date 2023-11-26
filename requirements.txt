@@ -3,4 +3,5 @@ pandas
 seaborn
 scikit-learn
 Flask
+xgboost
 -e .

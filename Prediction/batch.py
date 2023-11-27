@@ -1,95 +1,105 @@
-from delivery_time_prediction.constants import *
-from delivery_time_prediction.config.configuration import *
-from delivery_time_prediction.logger import logging
-from delivery_time_prediction.exception import CustomException
-from delivery_time_prediction.utils import load_model
-from sklearn.pipeline import Pipeline
+from src.constants import *
+from src.config.configuration import *
 import os, sys
 import pandas as pd
+import numpy as np
+from src.logger import logging
+from src.exception import CustomException
 import pickle
+from src.utils import load_model
+from sklearn.pipeline import Pipeline
 
+PREDICTION_FOLDER='batch_Prediction'
+PREDICTION_CSV='prediction_csv'
+PREDICTION_FILE='prediction.csv'
 
-PREDICTION_FOLDER = 'batch_prediction'
-PREDICTION_CSV = 'prediction_csv'
-PREDICTION_FILE = 'output.csv'
+FEATURE_ENG_FOLDER='feature_eng'
 
-FEATURE_ENGG_FOLDER = 'feature_engg'
+ROOT_DIR=os.getcwd()
+FEATURE_ENG=os.path.join(ROOT_DIR,PREDICTION_FOLDER,FEATURE_ENG_FOLDER)
+BATCH_PREDICTION=os.path.join(ROOT_DIR,PREDICTION_FOLDER,PREDICTION_CSV)
 
-ROOT_DIR = os.getcwd()
-BATCH_PREDICTION = os.path.join(
-    ROOT_DIR,
-    PREDICTION_FOLDER,
-    PREDICTION_CSV
-)
-FEATURE_ENGG = os.path.join(
-    ROOT_DIR,
-    FEATURE_ENGG_FOLDER
-)
-
-
-class BatchPrediction:
-    def __init__(
-            self,
-            input_file_path,
-            model_file_path,
-            transformer_file_path,
-            feature_engg_file_path
-    )->None:
+class batch_prediction:
+    def __init__(self,input_file_path, 
+                 model_file_path, 
+                 transformer_file_path, 
+                 feature_engineering_file_path) -> None:
+        
         self.input_file_path = input_file_path
         self.model_file_path = model_file_path
         self.transformer_file_path = transformer_file_path
-        self.feature_engg_file_path = feature_engg_file_path
-
+        self.feature_engineering_file_path = feature_engineering_file_path
+    
     def start_batch_prediction(self):
         try:
-            # load feature engg pipeline path
-            with open(self.feature_engg_file_path, 'r') as f:
-                feature__pipeline = pickle.load(f)
+            logging.info("Loading the saved pipeline")
 
-            # load data transformation path
-            with open(self.transformer_file_path, 'r') as f:
-                processor = pickle.load(f)
+            # Load the feature engineering pipeline
+            with open(self.feature_engineering_file_path, 'rb') as f:
+                feature_pipeline = pickle.load(f)
 
-            # load model separately
-            model = load_model(self.model_file_path)
+            logging.info(f"Feature eng Object acessed :{self.feature_engineering_file_path}")
+            
+            # Load the data transformation pipeline
+            with open(self.transformer_file_path, 'rb') as f:
+                preprocessor = pickle.load(f)
 
-            # create feature engineering pipeline
-            feature_engg_pipeline = Pipeline(steps=[
-                ('feature_engg', feature__pipeline)
+            logging.info(f"Preprocessor  Object acessed :{self.transformer_file_path}")
+            
+            # Load the model separately
+            model =load_model(file_path=self.model_file_path)
+
+            logging.info(f"Model File Path: {self.model_file_path}")
+
+            # Create the feature engineering pipeline
+            feature_engineering_pipeline = Pipeline([
+                ('feature_engineering', feature_pipeline)
             ])
-            
-            # loading dataset
+            # Read the input file
             df = pd.read_csv(self.input_file_path)
-            df.to_csv('zomato_delivery_time_prediction')
 
-            # apply feature engineering
-            df = feature__pipeline.transform(df)
+            df.to_csv("df_Zomoto_delivery_time.csv")
 
-            feature_engg_path = FEATURE_ENGG
-            os.makedirs(feature_engg_path, exist_ok=True)
+            # Apply feature engineering
+            df = feature_engineering_pipeline.transform(df)
 
-            file_path = os.path.join(feature_engg_path, 'batch_feature_eng.csv')
-            df.to_csv(file_path, index=False)
-
-            # time taken
-            df = df.drop('Time_taken (min)', axis=1)
+            df.to_csv("df_feature_enginnering.csv")
             
-
-            transformed_data = processor.transform(df)
-
-            file_path = os.path.join(feature_engg_path, 'processor.csv')
-
+            # Save the feature-engineered data as a CSV file
+            FEATURE_ENG_PATH = FEATURE_ENG  # Specify the desired path for saving the CSV file
+            os.makedirs(FEATURE_ENG_PATH, exist_ok=True)
+            file_path = os.path.join(FEATURE_ENG_PATH, 'batch_fea_eng.csv')
+            df.to_csv(file_path, index=False)
+            logging.info("Feature-engineered batch data saved as CSV.")
+            
+            # Dropping target column
+            
+            df=df.drop('Time_taken (min)', axis=1)
+            
+            df.to_csv('dropped_Time_taken (min).csv')
+          
+            logging.info(f"Columns before transformation: {', '.join(f'{col}: {df[col].dtype}' for col in df.columns)}")
+            # Transform the feature-engineered data using the preprocessor
+            transformed_data = preprocessor.transform(df)
+            logging.info(f"Transformed Data Shape: {transformed_data.shape}")
+            
+            logging.info(f"Loaded numpy from batch prediciton :{transformed_data}")
+            file_path = os.path.join(FEATURE_ENG_PATH, 'preprocessor.csv')
+            
+            logging.info(f"Model Data Type : {type(model)}")
+            
             predictions = model.predict(transformed_data)
+            logging.info(f"Predictions done :{predictions}")
 
-            df_prediction = pd.DataFrame(predictions, columns=['predictions'])
-
-            batch_prediction_path = BATCH_PREDICTION
-            os.makedirs(batch_prediction_path, exist_ok=True)
-            csv_path = os.path.join(batch_prediction_path, 'output.csv')
-
-            df_prediction.to_csv(csv_path, index=False)
-            logging.info("Batch prediction Done")
+            # Create a DataFrame from the predictions array
+            df_predictions = pd.DataFrame(predictions, columns=['prediction'])
+            
+            # Save the predictions to a CSV file
+            BATCH_PREDICTION_PATH = BATCH_PREDICTION  # Specify the desired path for saving the CSV file
+            os.makedirs(BATCH_PREDICTION_PATH, exist_ok=True)
+            csv_path = os.path.join(BATCH_PREDICTION_PATH,'predictions.csv')
+            df_predictions.to_csv(csv_path, index=False)
+            logging.info(f"Batch predictions saved to '{csv_path}'.")
 
         except Exception as e:
-            raise CustomException(e, sys)
-
+            CustomException(e,sys) 

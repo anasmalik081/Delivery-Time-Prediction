@@ -13,3 +13,7 @@ source activate env/ -> Git bash
 3. Install your requriments file
 
 pip install -r requirements.txt
+
+4. open terminal and run command
+
+python app.py
